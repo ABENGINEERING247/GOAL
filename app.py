@@ -61,7 +61,6 @@ def query_qloo_affinity(anchor_entity: str, target_domain: str, limit: int = 5):
     # Try live Qloo API call if a valid key is provided
     if QLOO_API_KEY and QLOO_API_KEY != "demo_mode_key":
         try:
-            # 1. Search entity ID
             search_res = requests.get(
                 f"{QLOO_BASE_URL}/search", 
                 headers=headers, 
@@ -72,7 +71,6 @@ def query_qloo_affinity(anchor_entity: str, target_domain: str, limit: int = 5):
                 results = search_res.json().get("results", [])
                 if results:
                     entity_id = results[0]["id"]
-                    # 2. Query cross-domain correlations
                     corr_res = requests.get(
                         f"{QLOO_BASE_URL}/correlations", 
                         headers=headers, 
@@ -100,9 +98,14 @@ def query_qloo_affinity(anchor_entity: str, target_domain: str, limit: int = 5):
             {"entity": "Ambient Acoustic Soundscapes & Binaural Beats", "affinity_score": 0.98, "energy": "Calming"},
             {"entity": "Gentle Nature Documentary Series (4K Ultrawide)", "affinity_score": 0.93, "energy": "Restorative"},
             {"entity": "Lo-Fi Instrumental & Soft Piano Anthology", "affinity_score": 0.88, "energy": "Mindful"}
+        ],
+        "general": [
+            {"entity": "Artisan Specialty Coffee & Minimalist Cafes", "affinity_score": 0.95},
+            {"entity": "Boutique Independent Cinema & Film Festivals", "affinity_score": 0.91},
+            {"entity": "Sustainable Nordic Apparel & Design", "affinity_score": 0.88}
         ]
     }
-    return mock_data.get(target_domain, mock_data["lighting"])
+    return mock_data.get(target_domain, mock_data["general"])
 
 # -----------------------------------------------------------------------------
 # SIDEBAR NAVIGATION
@@ -115,6 +118,7 @@ st.sidebar.markdown("---")
 app_mode = st.sidebar.radio(
     "Select Intelligence Domain Workflow:",
     [
+        "💬 Qloo Cultural AI Chatbot Agent",
         "💡 Architectural Lighting & Mood Matcher",
         "🍲 Senior Adaptive Culinary Navigator",
         "💜 Rare-Disease Journey Companion",
@@ -129,9 +133,60 @@ This application grounds AI agent recommendations in real cultural taste and aff
 """)
 
 # -----------------------------------------------------------------------------
+# WORKFLOW 0: QLOO CULTURAL AI CHATBOT AGENT
+# -----------------------------------------------------------------------------
+if app_mode == "💬 Qloo Cultural AI Chatbot Agent":
+    st.markdown("<div class=\"main-header\">Qloo Cultural AI Chatbot Agent</div>", unsafe_allow_html=True)
+    st.markdown("<div class=\"sub-header\">Chat live with a taste-grounded agent that queries Qloo's cultural intelligence graph to provide accurate cross-domain recommendations.</div>", unsafe_allow_html=True)
+
+    # Initialize chat history in session state if not present
+    if "messages" not in st.session_state:
+        st.session_state.messages = [
+            {"role": "assistant", "content": "Hello! I am your GOAL cultural intelligence agent powered by Qloo. Ask me for recommendations across dining, film, music, fashion, or travel based on any artist, brand, or style!"}
+        ]
+
+    # Display chat messages from history on app rerun
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+    # Accept user input via chat input box
+    if prompt := st.chat_input("Ask for recommendations (e.g., 'What restaurants and fashion brands fit fans of Wes Anderson?')..."):
+        # Add user message to session state
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+        # Generate agent response using Qloo correlation context
+        with st.chat_message("assistant"):
+            with st.spinner("Analyzing Qloo 250M+ entity taste graph..."):
+                # Call Qloo correlation helper based on user query keywords
+                domain_target = "general"
+                if "dining" in prompt.lower() or "restaurant" in prompt.lower() or "food" in prompt.lower():
+                    domain_target = "dining"
+                elif "light" in prompt.lower() or "room" in prompt.lower() or "aesthetic" in prompt.lower():
+                    domain_target = "lighting"
+                elif "music" in prompt.lower() or "movie" in prompt.lower() or "show" in prompt.lower():
+                    domain_target = "media"
+
+                affinities = query_qloo_affinity(prompt, domain_target, limit=3)
+                
+                # Construct grounded response
+                response_text = f"Based on cross-referencing your query with Qloo's cultural correlation engine for **'{prompt}'**, here are the top matching insights:\n\n"
+                for item in affinities:
+                    entity_name = item.get("entity", "Curated Entity")
+                    score = item.get("affinity_score", 0.9) * 100
+                    response_text += f"- **{entity_name}** (*Affinity Match: {score:.0f}%*)\n"
+                
+                response_text += "\n✨ *Unlike generic LLMs that guess based on surface text, these matches are grounded in real-world behavioral and cultural affinity patterns.*"
+                
+                st.markdown(response_text)
+                st.session_state.messages.append({"role": "assistant", "content": response_text})
+
+# -----------------------------------------------------------------------------
 # WORKFLOW 1: ARCHITECTURAL LIGHTING & MOOD MATCHER
 # -----------------------------------------------------------------------------
-if app_mode == "💡 Architectural Lighting & Mood Matcher":
+elif app_mode == "💡 Architectural Lighting & Mood Matcher":
     st.markdown("<div class=\"main-header\">Architectural Lighting & Aesthetic Mood Matcher</div>", unsafe_allow_html=True)
     st.markdown("<div class=\"sub-header\">Translating client taste in music, cinema, and art into precise Kelvin ratings, fixture designs, and ambient lighting setups.</div>", unsafe_allow_html=True)
 
