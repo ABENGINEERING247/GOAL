@@ -4,7 +4,9 @@ import json
 import pandas as pd
 import numpy as np
 
-# Set page config with wide layout and custom title
+# -----------------------------------------------------------------------------
+# PAGE CONFIGURATION & STYLING
+# -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="GOAL - Cultural Intelligence Agent Lab",
     page_icon="🎯",
@@ -12,7 +14,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS styling
 st.markdown("""
 <style>
     .main-header {
@@ -44,28 +45,46 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Retrieve credentials securely from Streamlit secrets
+# Retrieve credentials securely from Streamlit secrets with a fallback for demo mode
 QLOO_API_KEY = st.secrets.get("QLOO_API_KEY", "demo_mode_key")
 QLOO_BASE_URL = "https://api.qloo.com/v1"
 
+# -----------------------------------------------------------------------------
+# QLOO API INTEGRATION WITH GRACEFUL FALLBACK
+# -----------------------------------------------------------------------------
 def query_qloo_affinity(anchor_entity: str, target_domain: str, limit: int = 5):
     headers = {
         "x-api-key": QLOO_API_KEY,
         "Accept": "application/json"
     }
-    params = {
-        "anchor": anchor_entity,
-        "domain": target_domain,
-        "limit": limit
-    }
     
-    try:
-        response = requests.get(f"{QLOO_BASE_URL}/correlations", headers=headers, params=params, timeout=5)
-        if response.status_code == 200:
-            return response.json()
-    except Exception:
-        pass
+    # Try live Qloo API call if a valid key is provided
+    if QLOO_API_KEY and QLOO_API_KEY != "demo_mode_key":
+        try:
+            # 1. Search entity ID
+            search_res = requests.get(
+                f"{QLOO_BASE_URL}/search", 
+                headers=headers, 
+                params={"query": anchor_entity}, 
+                timeout=4
+            )
+            if search_res.status_code == 200:
+                results = search_res.json().get("results", [])
+                if results:
+                    entity_id = results[0]["id"]
+                    # 2. Query cross-domain correlations
+                    corr_res = requests.get(
+                        f"{QLOO_BASE_URL}/correlations", 
+                        headers=headers, 
+                        params={"anchor": entity_id, "target_type": target_domain, "limit": limit}, 
+                        timeout=4
+                    )
+                    if corr_res.status_code == 200:
+                        return corr_res.json()
+        except Exception:
+            pass  # Fall back to curated mock dataset seamlessly
 
+    # Fallback Mock Data for Demo & Robustness
     mock_data = {
         "lighting": [
             {"entity": "Warm Ambient Mid-Century Edison (2700K)", "affinity_score": 0.94, "style": "Warm Minimalist"},
@@ -181,19 +200,19 @@ elif app_mode == "🍲 Senior Adaptive Culinary Navigator":
         with col_a:
             st.markdown("#### 🏡 Home-Delivered Meal Plan")
             st.info("""
-            1. **Braised Herb Butter Salmon & Creamy Potato Puree**
-               - *Texture:* Soft & Tender | *Spice:* Zero-Spice | *Safety:* Low Sodium, Citrus-Free
-            2. **Slow-Simmered Tuscan Root Vegetable Stew**
-               - *Texture:* Soft Mastication | *Spice:* Mild Herbs | *Safety:* Diabetic Friendly
+1. **Braised Herb Butter Salmon & Creamy Potato Puree**
+   - *Texture:* Soft & Tender | *Spice:* Zero-Spice | *Safety:* Low Sodium, Citrus-Free
+2. **Slow-Simmered Tuscan Root Vegetable Stew**
+   - *Texture:* Soft Mastication | *Spice:* Mild Herbs | *Safety:* Diabetic Friendly
             """)
         
         with col_b:
             st.markdown("#### 🏬 Local Senior-Friendly Dining Venues")
             st.success("""
-            1. **The Heritage Hearth Bistro** (Match Score: 96%)
-               - *Notes:* Excellent acoustic dampening, soft-texture menu options, quiet seating.
-            2. **Garden Terrace Café** (Match Score: 91%)
-               - *Notes:* Wheelchair accessible, customizable spice/sodium levels on all roasts.
+1. **The Heritage Hearth Bistro** (Match Score: 96%)
+   - *Notes:* Excellent acoustic dampening, soft-texture menu options, quiet seating.
+2. **Garden Terrace Café** (Match Score: 91%)
+   - *Notes:* Wheelchair accessible, customizable spice/sodium levels on all roasts.
             """)
 
 # -----------------------------------------------------------------------------
